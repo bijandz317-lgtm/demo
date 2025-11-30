@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Caro Web</title>
+
+<style>
+:root{
+  --bg: #0f1724;
+  --card: #071428;
+  --accent: #00d1b2;
+  --muted: #9aa7b2;
+  --x-color: #ff4757;
+  --o-color: #1e90ff;
+  --cell-bg: rgba(255,255,255,0.05);
+  --cell-hover: rgba(255,255,255,0.12);
+  --cell-size: 42px;
+}
+
+body{
+  margin:0;
+  background:linear-gradient(180deg, var(--bg), #06111f);
+  color:white;
+  font-family:Arial;
+  text-align:center;
+  padding:30px;
+}
+
+#panel{
+  margin-bottom:20px;
+}
+
+input, select{
+  padding:8px 12px;
+  background:#0c1c30;
+  border:1px solid #1f2e43;
+  border-radius:8px;
+  color:white;
+  outline:none;
+}
+
+button{
+  background:var(--accent);
+  border:none;
+  padding:8px 15px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:bold;
+}
+button:hover{ filter:brightness(1.15); }
+
+#board{
+  margin:20px auto;
+  display:grid;
+  gap:6px;
+  width:max-content;
+}
+
+.cell{
+  width:var(--cell-size);
+  height:var(--cell-size);
+  background:var(--cell-bg);
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  cursor:pointer;
+}
+.cell:hover{ background:var(--cell-hover); }
+
+.x{ color:var(--x-color); }
+.o{ color:var(--o-color); }
+
+.win{
+  background: rgba(255,255,255,0.25) !important;
+  box-shadow:0 0 10px rgba(255,255,255,0.7);
+}
+</style>
+
+</head>
+<body>
+
+<h1>Caro N×N – Chế độ Người & Máy</h1>
+
+<div id="panel">
+  <input id="size" type="number" min="4" max="20" placeholder="Nhập N (4–20)">
+  
+  <select id="mode">
+    <option value="pvp">Người vs Người</option>
+    <option value="easy">Người vs Máy – Dễ</option>
+    <option value="hard">Người vs Máy – Khó</option>
+  </select>
+
+  <button onclick="createBoard()">Tạo bàn</button>
+</div>
+
+<div id="board"></div>
+
+<script>
+let N = 0;
+let board = [];
+let turn = "X";
+let mode = "pvp";
+let isGameOver = false;
+
+function createBoard(){
+  N = parseInt(document.getElementById("size").value);
+  mode = document.getElementById("mode").value;
+
+  if(!N || N < 4 || N > 20){
+    alert("N phải từ 4 đến 20");
+    return;
+  }
+
+  const boardDiv = document.getElementById("board");
+  boardDiv.innerHTML = "";
+  boardDiv.style.gridTemplateColumns = `repeat(${N}, var(--cell-size))`;
+
+  board = Array.from({length:N}, ()=>Array(N).fill(""));
+  turn = "X";
+  isGameOver = false;
+
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.onclick = ()=> playerClick(i,j,cell);
+      boardDiv.appendChild(cell);
+    }
+  }
+}
+
+function playerClick(i, j, cell) {
+  if (isGameOver) return;
+  if (board[i][j] !== "") return;
+
+  move(i, j, turn, cell);
+
+  let win = checkWin(turn);
+  if (win) { finish(win); return; }
+
+  if (mode === "pvp") {
+    turn = (turn === "X" ? "O" : "X");
+    return;
+  }
+
+  turn = "O";
+  setTimeout(botMove, 200);
+}
+
+function move(i,j,player,cell){
+  board[i][j] = player;
+  cell.textContent = player;
+  cell.classList.add(player=="X"?"x":"o");
+}
+
+function botMove() {
+  if (isGameOver) return;
+
+  let pos = (mode === "easy") ? randomMove() : smartMove();
+  if (!pos) return;
+
+  const cell = document.getElementById("board").children[pos.i * N + pos.j];
+
+  move(pos.i, pos.j, "O", cell);
+
+  let win = checkWin("O");
+  if (win) { finish(win); return; }
+
+  turn = "X";   
+}
+
+
+function randomMove(){
+  let free = [];
+  for(let i=0;i<N;i++)
+    for(let j=0;j<N;j++)
+      if(board[i][j] === "") free.push({i,j});
+  return free[Math.floor(Math.random()*free.length)];
+}
+
+function smartMove(){
+  // 1. bot tự thắng
+  let win = findWin("O");
+  if(win) return win;
+
+  // 2. chặn X thắng
+  let block = findWin("X");
+  if(block) return block;
+
+  // 3. không có thì random
+  return randomMove();
+}
+
+function findWin(player) {
+  const need = (N < 5 ? 3 : 5);
+
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      if (board[i][j] === "") {
+        board[i][j] = player;
+        if (checkWin(player)) {
+          board[i][j] = "";
+          return { i, j };
+        }
+        board[i][j] = "";
+      }
+    }
+  }
+  return null;
+}
+
+
+function finish(winCells){
+  isGameOver = true;
+  highlight(winCells);
+  setTimeout(()=>alert(turn + " thắng!"),100);
+}
+
+function highlight(list){
+  const cells = document.getElementById("board").children;
+  for(const [i,j] of list){
+    cells[i*N + j].classList.add("win");
+  }
+}
+
+/* kiểm tra thắng 3 liên tiếp */
+function checkWin(p) {
+  const need = (N < 5 ? 3 : 5);
+
+  // ----- NGANG -----
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j <= N - need; j++) {
+      let ok = true;
+      for (let k = 0; k < need; k++) {
+        if (board[i][j + k] !== p) { ok = false; break; }
+      }
+      if (ok) {
+        return Array.from({length: need}, (_, k) => [i, j + k]);
+      }
+    }
+  }
+
+  // ----- DỌC -----
+  for (let i = 0; i <= N - need; i++) {
+    for (let j = 0; j < N; j++) {
+      let ok = true;
+      for (let k = 0; k < need; k++) {
+        if (board[i + k][j] !== p) { ok = false; break; }
+      }
+      if (ok) {
+        return Array.from({length: need}, (_, k) => [i + k, j]);
+      }
+    }
+  }
+
+  // ----- CHÉO CHÍNH -----
+  for (let i = 0; i <= N - need; i++) {
+    for (let j = 0; j <= N - need; j++) {
+      let ok = true;
+      for (let k = 0; k < need; k++) {
+        if (board[i + k][j + k] !== p) { ok = false; break; }
+      }
+      if (ok) {
+        return Array.from({length: need}, (_, k) => [i + k, j + k]);
+      }
+    }
+  }
+
+  // ----- CHÉO PHỤ -----
+  for (let i = 0; i <= N - need; i++) {
+    for (let j = need - 1; j < N; j++) {
+      let ok = true;
+      for (let k = 0; k < need; k++) {
+        if (board[i + k][j - k] !== p) { ok = false; break; }
+      }
+      if (ok) {
+        return Array.from({length: need}, (_, k) => [i + k, j - k]);
+      }
+    }
+  }
+
+  return null;
+}
+
+</script>
+
+</body>
+</html> 

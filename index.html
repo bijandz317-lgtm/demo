@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Caro Web</title>
+  <style>
+    :root{--bg:#0f1724;--card:#071428;--accent:#00d1b2;--muted:#9aa7b2;--glass: rgba(255,255,255,0.03)}
+    *{box-sizing:border-box;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,var(--bg), #071023);color:#e6f0f2;display:flex;align-items:flex-start;justify-content:center;padding:24px}
+    .container{width:1100px;max-width:100%;display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .card{background:linear-gradient(180deg,var(--card), #021226);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    h1{font-size:18px;margin:0}
+    .controls{display:flex;gap:8px;align-items:center}
+    button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#062123;font-weight:700;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:600}
+    .board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:420px;max-width:100%;margin:0 auto}
+    .cell{aspect-ratio:1/1;background:var(--glass);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:56px;cursor:pointer;user-select:none}
+    .cell.disabled{opacity:0.6;cursor:not-allowed}
+    .side{display:flex;flex-direction:column;gap:12px}
+    .stat{font-size:14px;color:var(--muted)}
+    .score{font-size:28px;font-weight:800;color:var(--accent)}
+    .modes{display:flex;gap:8px;flex-wrap:wrap}
+    select,input[type=radio]{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit;padding:8px;border-radius:8px}
+    footer{margin-top:12px;color:var(--muted);font-size:13px;text-align:center}
+    .small{font-size:12px;color:var(--muted)}
+    .bigCanvas{background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center}
+    @media(max-width:1100px){.container{grid-template-columns:1fr}.board{width:320px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <header>
+        <h1>XO — Tic‑Tac‑Toe (3x3)</h1>
+        <div class="controls">
+          <button id="newBtn">Trò mới (3×3)</button>
+          <button id="openBig" class="ghost">Mở N×N (trang riêng)</button>
+        </div>
+      </header>
+
+      <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:280px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+            <div class="board" id="board" role="grid" aria-label="Bàn chơi XO"></div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="stat">Lượt: <strong id="turnTxt">—</strong></div>
+              <div class="stat">Trạng thái: <span id="statusTxt">Sẵn sàng</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:360px">
+          <aside class="side">
+            <div class="card" style="padding:12px">
+              <div style="font-size:14px;color:var(--muted)">Chế độ</div>
+              <div class="modes" style="margin-top:8px">
+                <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="mode" value="pvp" checked> Hai người</label>
+                <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="mode" value="ai"> Máy</label>
+              </div>
+
+              <div style="margin-top:10px">
+                <div style="font-size:14px;color:var(--muted)">Độ khó (khi chơi với máy)</div>
+                <select id="aiLevel" style="margin-top:8px">
+                  <option value="easy">Dễ (random)</option>
+                  <option value="hard">Khó (Minimax)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card" style="padding:12px">
+              <div style="font-size:14px;color:var(--muted)">Điểm</div>
+              <div style="display:flex;gap:12px;margin-top:8px">
+                <div>
+                  <div class="stat">X (Bạn 1)</div>
+                  <div class="score" id="scoreX">0</div>
+                </div>
+                <div>
+                  <div class="stat">O (Bạn 2 / Máy)</div>
+                  <div class="score" id="scoreO">0</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:12px">
+              <div style="font-size:14px;color:var(--muted)">Tùy chọn N×N (chạy ngay trong trang mới)</div>
+              <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                <label class="small">Kích thước (3–9)</label>
+                <input id="bigN" type="number" min="3" max="9" value="5" style="width:80px;padding:6px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.06)"/>
+              </div>
+              <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                <button id="openBig2" class="ghost">Mở N×N trong trang mới</button>
+                <button id="embedBig" class="ghost">Mở N×N ở đây</button>
+              </div>
+              <div class="small" style="margin-top:8px">Luật thắng: nếu N≤4 → 3 ăn; N==5 → 4 ăn; N≥6 → 5 ăn (giống Pygame của bạn).</div>
+            </div>
+
+          </aside>
+        </div>
+      </div>
+
+      <footer>Chơi với máy bằng chế độ 'Máy' — Chọn 'Dễ' (random) hoặc 'Khó' (Minimax).</footer>
+    </div>
+
+    <!-- Embedded big board area (hidden until user embeds) -->
+    <div id="bigContainer" class="card" style="display:none;grid-column:1/-1">
+      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin:0;font-size:16px">Bàn N×N (embedded)</h2>
+        <div style="display:flex;gap:8px">
+          <button id="closeEmbed" class="ghost">Đóng</button>
+          <button id="resetEmbed" class="ghost">Làm lại</button>
+        </div>
+      </header>
+      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <canvas id="bigCanvas" width="600" height="600" style="background:#fff;border-radius:8px"></canvas>
+        <div style="flex:1;min-width:200px;color:var(--muted)">
+          <div id="bigInfo">Kích thước: — | WinNeed: — | Lượt: —</div>
+          <div id="bigMsg" style="margin-top:12px;font-weight:700"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ==== EXISTING 3x3 XO LOGIC (kept from previous file) ====
+    const boardEl = document.getElementById('board');
+    const turnTxt = document.getElementById('turnTxt');
+    const statusTxt = document.getElementById('statusTxt');
+    const newBtn = document.getElementById('newBtn');
+    const openBig = document.getElementById('openBig');
+    const openBig2 = document.getElementById('openBig2');
+    const openBigWindow = document.getElementById('openBig');
+    const openBigEmbedBtn = document.getElementById('embedBig');
+    const bigNInput = document.getElementById('bigN');
+    const closeEmbed = document.getElementById('closeEmbed');
+    const bigContainer = document.getElementById('bigContainer');
+    const bigCanvas = document.getElementById('bigCanvas');
+    const bigInfo = document.getElementById('bigInfo');
+    const bigMsg = document.getElementById('bigMsg');
+    const resetEmbed = document.getElementById('resetEmbed');
+
+    const aiLevelSel = document.getElementById('aiLevel');
+    const modeRadios = document.getElementsByName('mode');
+    const scoreXEl = document.getElementById('scoreX');
+    const scoreOEl = document.getElementById('scoreO');
+
+    let board = Array(9).fill(null); // null / 'X' / 'O'
+    let current = 'X';
+    let running = false;
+    let scores = {X:0, O:0};
+
+    function createBoard(){
+      boardEl.innerHTML = '';
+      for(let i=0;i<9;i++){
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.setAttribute('role','button');
+        cell.setAttribute('aria-label', 'Ô ' + (i+1));
+        cell.dataset.index = i;
+        cell.addEventListener('click', onCellClick);
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function onCellClick(e){
+      const i = Number(e.currentTarget.dataset.index);
+      if(!running || board[i] !== null) return;
+      const mode = getMode();
+
+      makeMove(i, current);
+
+      if(running && mode === 'ai' && current === 'O'){
+        setTimeout(()=> aiMove(), 250);
+      }
+    }
+
+    function getMode(){
+      for(const r of modeRadios) if(r.checked) return r.value;
+      return 'pvp';
+    }
+
+    function startGame(){
+      board = Array(9).fill(null);
+      running = true;
+      current = 'X';
+      updateBoard();
+      statusTxt.textContent = 'Đang chơi';
+      turnTxt.textContent = current;
+
+      if(getMode() === 'ai' && current === 'O'){
+        setTimeout(()=> aiMove(), 350);
+      }
+    }
+
+    function endGame(winner){
+      running = false;
+      if(winner){
+        statusTxt.textContent = 'Người thắng: ' + winner;
+        scores[winner]++;
+        saveScores();
+        renderScores();
+      } else {
+        statusTxt.textContent = 'Hòa';
+      }
+      turnTxt.textContent = '—';
+    }
+
+    function makeMove(index, player){
+      if(board[index] !== null || !running) return false;
+      board[index] = player;
+      updateBoard();
+      const winner = checkWinner(board);
+      if(winner){
+        endGame(winner === 'draw' ? null : winner);
+      } else {
+        current = (player === 'X') ? 'O' : 'X';
+        turnTxt.textContent = current;
+      }
+      return true;
+    }
+
+    function updateBoard(){
+      const cells = boardEl.children;
+      for(let i=0;i<9;i++){
+        const v = board[i];
+        cells[i].textContent = v ? v : '';
+        cells[i].classList.toggle('disabled', v !== null || !running);
+      }
+    }
+
+    function renderScores(){
+      scoreXEl.textContent = scores.X;
+      scoreOEl.textContent = scores.O;
+    }
+
+    function saveScores(){
+      localStorage.setItem('xo_scores', JSON.stringify(scores));
+    }
+    function loadScores(){
+      const raw = localStorage.getItem('xo_scores');
+      if(raw) scores = JSON.parse(raw);
+      renderScores();
+    }
+
+    document.getElementById('newBtn').addEventListener('click', ()=> startGame());
+    document.getElementById('openBig').addEventListener('click', ()=> window.open('xo_big.html','_blank'));
+    document.getElementById('openBig2').addEventListener('click', ()=> {
+      const n = Number(bigNInput.value) || 5;
+      window.open('xo_big.html?n='+n,'_blank');
+    });
+
+    // Embed: create an interactive N×N board inside this page using canvas
+    openBigEmbedBtn.addEventListener('click', ()=>{
+      const n = Math.max(3, Math.min(9, Number(bigNInput.value)||5));
+      initEmbeddedBig(n);
+      bigContainer.style.display = 'block';
+      window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+    });
+    closeEmbed.addEventListener('click', ()=>{ bigContainer.style.display='none'; });
+    resetEmbed.addEventListener('click', ()=>{
+      const n = currentEmbeddedN || 5; initEmbeddedBig(n);
+    });
+
+    // Simple AI for 3x3 (kept minimal)
+    function aiMove(){
+      if(!running) return;
+      const level = aiLevelSel.value;
+      let move;
+      if(level === 'easy'){
+        const empties = board.map((v,i)=>v===null?i:null).filter(x=>x!==null);
+        move = empties[Math.floor(Math.random()*empties.length)];
+      } else {
+        move = bestMove(board, 'O');
+      }
+      if(move !== undefined) makeMove(move, 'O');
+    }
+
+    function checkWinner(b){
+      const wins = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+      for(const [a,c,d] of wins){
+        if(b[a] && b[a] === b[c] && b[c] === b[d]) return b[a];
+      }
+      if(b.every(x=>x!==null)) return 'draw';
+      return null;
+    }
+
+    // Minimax for 3x3
+    function bestMove(b, player){
+      let bestScore = -Infinity;
+      let bestIdx;
+      for(let i=0;i<9;i++){
+        if(b[i] === null){
+          b[i] = player;
+          const score = minimax(b, 0, false, player);
+          b[i] = null;
+          if(score > bestScore){ bestScore = score; bestIdx = i; }
+        }
+      }
+      return bestIdx;
+    }
+    function minimax(b, depth, isMaximizing, aiPlayer){
+      const winner = checkWinner(b);
+      if(winner === aiPlayer) return 10 - depth;
+      if(winner && winner !== 'draw') return depth - 10;
+      if(winner === 'draw') return 0;
+
+      const human = aiPlayer === 'X' ? 'O' : 'X';
+      if(isMaximizing){
+        let maxEval = -Infinity;
+        for(let i=0;i<9;i++){
+          if(b[i] === null){
+            b[i] = aiPlayer;
+            const evalv = minimax(b, depth+1, false, aiPlayer);
+            b[i] = null;
+            maxEval = Math.max(maxEval, evalv);
+          }
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        for(let i=0;i<9;i++){
+          if(b[i] === null){
+            b[i] = human;
+            const evalv = minimax(b, depth+1, true, aiPlayer);
+            b[i] = null;
+            minEval = Math.min(minEval, evalv);
+          }
+        }
+        return minEval;
+      }
+    }
+
+    // === EMBEDDED N×N implementation (Pygame-like) ===
+    let currentEmbeddedN = null;
+    let embeddedBoard = null;
+    let embeddedPlayer = 'X';
+    let embeddedWinNeed = 3;
+    let embeddedGameOver = false;
+    const eCtx = bigCanvas.getContext('2d');
+
+    function calcWinNeed(n){
+      if(n <= 4) return 3;
+      if(n === 5) return 4;
+      return 5;
+    }
+
+    function initEmbeddedBig(n){
+      currentEmbeddedN = n;
+      embeddedBoard = Array.from({length:n}, ()=>Array(n).fill(' '));
+      embeddedPlayer = 'X';
+      embeddedWinNeed = calcWinNeed(n);
+      embeddedGameOver = false;
+      resizeCanvasForN(n);
+      renderEmbedded();
+    }
+
+    function resizeCanvasForN(n){
+      const max = 700;
+      const size = Math.min(max, Math.max(300, n*70));
+      bigCanvas.width = size;
+      bigCanvas.height = size;
+    }
+
+    function renderEmbedded(){
+      const n = currentEmbeddedN;
+      const W = bigCanvas.width;
+      const cell = W / n;
+      eCtx.fillStyle = '#ffffff';
+      eCtx.fillRect(0,0,W,W);
+
+      // grid lines
+      eCtx.strokeStyle = '#000';
+      eCtx.lineWidth = Math.max(1, Math.round(W/300));
+      for(let i=1;i<n;i++){
+        eCtx.beginPath(); eCtx.moveTo(i*cell,0); eCtx.lineTo(i*cell,W); eCtx.stroke();
+        eCtx.beginPath(); eCtx.moveTo(0,i*cell); eCtx.lineTo(W,i*cell); eCtx.stroke();
+      }
+
+      // X/O
+      eCtx.font = Math.floor(cell*0.7) + 'px Arial';
+      eCtx.textAlign = 'center'; eCtx.textBaseline = 'middle';
+      for(let i=0;i<n;i++){
+        for(let j=0;j<n;j++){
+          const v = embeddedBoard[i][j];
+          if(v !== ' '){
+            eCtx.fillStyle = (v === 'X') ? '#d33' : '#1363d4';
+            eCtx.fillText(v, j*cell + cell/2, i*cell + cell/2 + cell*0.03);
+          }
+        }
+      }
+
+      bigInfo.textContent = `Kích thước: ${n} × ${n} | WinNeed: ${embeddedWinNeed} | Lượt: ${embeddedPlayer}`;
+      bigMsg.textContent = embeddedGameOver ? 'Trò kết thúc' : '';
+    }
+
+    function embeddedCheckWin(b){
+      const n = b.length;
+      const dx = [0,1,1,-1];
+      const dy = [1,0,1,1];
+      for(let i=0;i<n;i++){
+        for(let j=0;j<n;j++){
+          if(b[i][j] === ' ') continue;
+          const c = b[i][j];
+          for(let d=0;d<4;d++){
+            let cnt = 0; let x=i,y=j;
+            while(x>=0 && x<n && y>=0 && y<n && b[x][y] === c){
+              cnt++; if(cnt >= embeddedWinNeed) return c;
+              x += dx[d]; y += dy[d];
+            }
+          }
+        }
+      }
+      return ' ';
+    }
+
+    function embeddedBoardFull(b){
+      for(const row of b) if(row.includes(' ')) return false; return true;
+    }
+
+    bigCanvas.addEventListener('click', (ev)=>{
+      if(!currentEmbeddedN) return;
+      if(embeddedGameOver) return;
+      const rect = bigCanvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left; const y = ev.clientY - rect.top;
+      const cell = bigCanvas.width / currentEmbeddedN;
+      const j = Math.floor(x / cell); const i = Math.floor(y / cell);
+      if(i<0||i>=currentEmbeddedN||j<0||j>=currentEmbeddedN) return;
+      if(embeddedBoard[i][j] === ' '){
+        embeddedBoard[i][j] = embeddedPlayer;
+        const w = embeddedCheckWin(embeddedBoard);
+        if(w !== ' '){ embeddedGameOver = true; bigMsg.textContent = `Người chơi ${w} thắng!`; }
+        else if(embeddedBoardFull(embeddedBoard)){ embeddedGameOver = true; bigMsg.textContent = 'Hòa!'; }
+        else { embeddedPlayer = embeddedPlayer === 'X' ? 'O' : 'X'; }
+        renderEmbedded();
+      }
+    });
+
+    loadScores(); createBoard(); startGame();
+  </script>
+</body>
+</html>
