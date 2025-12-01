@@ -15,9 +15,27 @@
     .controls{display:flex;gap:8px;align-items:center}
     button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#062123;font-weight:700;cursor:pointer}
     button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:600}
+
     .board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:420px;max-width:100%;margin:0 auto}
-    .cell{aspect-ratio:1/1;background:var(--glass);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:56px;cursor:pointer;user-select:none}
+
+    .cell{
+      aspect-ratio:1/1;background:var(--glass);border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:56px;cursor:pointer;user-select:none;
+      transition:0.2s;
+    }
     .cell.disabled{opacity:0.6;cursor:not-allowed}
+
+    /* ⭐ X màu đỏ – O màu xanh dương */
+    .cell.x{color:#ff4444}
+    .cell.o{color:#4aa3ff}
+
+    /* ⭐ highlight khi thắng */
+    .win{
+      background:#ffe680 !important;
+      box-shadow:0 0 15px #ffe680;
+    }
+
     .side{display:flex;flex-direction:column;gap:12px}
     .stat{font-size:14px;color:var(--muted)}
     .score{font-size:28px;font-weight:800;color:var(--accent)}
@@ -144,9 +162,9 @@
     function makeMove(i, p){
       board[i] = p;
       updateBoard();
-      const w = checkWinner(board);
-      if(w){
-        endGame(w === 'draw' ? null : w);
+      const result = checkWinner(board);
+      if(result){
+        endGame(result === 'draw' ? null : result);
       } else {
         current = (p==='X')?'O':'X';
         turnTxt.textContent = current;
@@ -154,23 +172,41 @@
     }
 
     function checkWinner(b){
-      const wins = [
+      const winLines = [
         [0,1,2],[3,4,5],[6,7,8],
         [0,3,6],[1,4,7],[2,5,8],
         [0,4,8],[2,4,6]
       ];
-      for(const [a,c,d] of wins){
-        if(b[a] && b[a]===b[c] && b[c]===b[d]) return b[a];
+      for(const line of winLines){
+        const [a,b1,c] = line;
+        if(b[a] && b[a]===b1 && b1===c);
+      }
+      for(const [a,c,d] of winLines){
+        if(b[a] && b[a]===b[c] && b[c]===b[d]) {
+          highlightWin([a,c,d]);
+          return b[a];
+        }
       }
       if(b.every(v=>v!==null)) return 'draw';
       return null;
+    }
+
+    /* ⭐ Highlight 3 ô thắng */
+    function highlightWin(cells){
+      const children = boardEl.children;
+      for(const i of cells){
+        children[i].classList.add("win");
+      }
     }
 
     function updateBoard(){
       const cells = boardEl.children;
       for(let i=0;i<9;i++){
         cells[i].textContent = board[i] ?? '';
-        cells[i].classList.toggle('disabled', !!board[i] || !running);
+        cells[i].className = "cell";
+        if(board[i]==="X") cells[i].classList.add("x");
+        if(board[i]==="O") cells[i].classList.add("o");
+        if(board[i] || !running) cells[i].classList.add("disabled");
       }
     }
 
@@ -189,14 +225,14 @@
 
     function aiMove(){
       const level = aiLevelSel.value;
-      let mv;
+      let m;
       if(level==='easy'){
         const e = board.map((v,i)=>v===null?i:null).filter(v=>v!==null);
-        mv = e[Math.floor(Math.random()*e.length)];
+        m = e[Math.floor(Math.random()*e.length)];
       } else {
-        mv = bestMove(board, 'O');
+        m = bestMove(board,'O');
       }
-      if(mv!==undefined) makeMove(mv,'O');
+      if(m!==undefined) makeMove(m,'O');
     }
 
     function bestMove(b, ai){
