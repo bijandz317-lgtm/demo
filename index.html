@@ -26,11 +26,9 @@
     }
     .cell.disabled{opacity:0.6;cursor:not-allowed}
 
-    /* ⭐ X màu đỏ – O màu xanh dương */
     .cell.x{color:#ff4444}
     .cell.o{color:#4aa3ff}
 
-    /* ⭐ highlight khi thắng */
     .win{
       background:#ffe680 !important;
       box-shadow:0 0 15px #ffe680;
@@ -191,7 +189,6 @@
       return null;
     }
 
-    /* ⭐ Highlight 3 ô thắng */
     function highlightWin(cells){
       const children = boardEl.children;
       for(const i of cells){
