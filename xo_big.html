@@ -1,290 +1,578 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<title>Caro Web</title>
-
+<meta charset="UTF-8" />
+<title>Caro Web </title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
 :root{
-  --bg: #0f1724;
-  --card: #071428;
-  --accent: #00d1b2;
-  --muted: #9aa7b2;
-  --x-color: #ff4757;
-  --o-color: #1e90ff;
-  --cell-bg: rgba(255,255,255,0.05);
-  --cell-hover: rgba(255,255,255,0.12);
-  --cell-size: 42px;
+  --bg:#0f1724; --card:#071428; --accent:#00d1b2; --muted:#9aa7b2;
+  --x:#ff4757; --o:#1e90ff; --cell-size:40px;
 }
-
-body{
-  margin:0;
-  background:linear-gradient(180deg, var(--bg), #06111f);
-  color:white;
-  font-family:Arial;
-  text-align:center;
-  padding:30px;
-}
-
-#panel{
-  margin-bottom:20px;
-}
-
-input, select{
-  padding:8px 12px;
-  background:#0c1c30;
-  border:1px solid #1f2e43;
-  border-radius:8px;
-  color:white;
-  outline:none;
-}
-
-button{
-  background:var(--accent);
-  border:none;
-  padding:8px 15px;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:bold;
-}
-button:hover{ filter:brightness(1.15); }
-
-#board{
-  margin:20px auto;
-  display:grid;
-  gap:6px;
-  width:max-content;
-}
-
-.cell{
-  width:var(--cell-size);
-  height:var(--cell-size);
-  background:var(--cell-bg);
-  border-radius:6px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:24px;
-  cursor:pointer;
-}
-.cell:hover{ background:var(--cell-hover); }
-
-.x{ color:var(--x-color); }
-.o{ color:var(--o-color); }
-
-.win{
-  background: rgba(255,255,255,0.25) !important;
-  box-shadow:0 0 10px rgba(255,255,255,0.7);
-}
+*{box-sizing:border-box}
+body{margin:0;padding:22px;background:linear-gradient(180deg,var(--bg),#021226);color:#e6f0f2;font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center}
+.app{width:min(980px,98%);display:flex;flex-direction:column;gap:12px}
+.header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+.header input,.header select,.header button{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+.header button{background:var(--accent);border:none;color:#062123;font-weight:700;cursor:pointer}
+.board-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+#board{display:grid;gap:6px}
+.cell{width:var(--cell-size);height:var(--cell-size);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:8px;font-weight:700;user-select:none;cursor:pointer}
+.cell.x{color:var(--x);font-size:18px}
+.cell.o{color:var(--o);font-size:18px}
+.cell.win{background:rgba(255,255,255,0.18);box-shadow:0 6px 18px rgba(0,0,0,0.35)}
+.info{color:var(--muted)}
+.footer{color:var(--muted);font-size:13px;text-align:center}
+@media (max-width:600px){ :root{--cell-size:34px} .header{gap:8px} }
 </style>
-
 </head>
 <body>
+  <div class="app">
+    <div class="header">
+      <label>N: <input id="size" type="number" min="3" max="20" value="7" style="width:78px"></label>
+      <label>Chế độ:
+        <select id="mode">
+          <option value="pvp">Người vs Người</option>
+          <option value="easy">Người vs Máy – Dễ </option>
+          <option value="hard">Người vs Máy – Khó</option>
+          <option value="superhard">Người vs Máy – Siêu Khó</option>
+        </select>
+      </label>
+      <button id="createBtn">Tạo bàn</button>
+      <button id="resetBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)">Làm lại</button>
+    </div>
 
-<h1>Caro N×N – Chế độ Người & Máy</h1>
+    <div class="board-wrap">
+      <div id="board" role="grid" aria-label="Bàn XO"></div>
+      <div class="info" id="status">Lượt: — | WinNeed: —</div>
+    </div>
 
-<div id="panel">
-  <input id="size" type="number" min="4" max="20" placeholder="Nhập N (4–20)">
-  
-  <select id="mode">
-    <option value="pvp">Người vs Người</option>
-    <option value="easy">Người vs Máy – Dễ</option>
-    <option value="hard">Người vs Máy – Khó</option>
-  </select>
-
-  <button onclick="createBoard()">Tạo bàn</button>
-</div>
-
-<div id="board"></div>
+    <div class="footer">Luật: N≤4 → 3 ăn; N==5 → 4 ăn; N≥6 → 5 ăn.</div>
+  </div>
 
 <script>
-let N = 0;
+
+let N = 7;
 let board = [];
-let turn = "X";
-let mode = "pvp";
+let turn = 'X';
+let mode = 'easy';
 let isGameOver = false;
+const boardEl = document.getElementById('board');
+const statusEl = document.getElementById('status');
+const sizeInput = document.getElementById('size');
+const modeSelect = document.getElementById('mode');
+document.getElementById('createBtn').onclick = createBoard;
+document.getElementById('resetBtn').onclick = resetBoard;
+
+let activeMask = null;
+let transposition = new Map(); 
+let evalCache = new Map();
+
+function winNeedFor(n){ if(n <= 4) return 3; if(n === 5) return 4; return 5; }
+function inBounds(x,y){ return x>=0 && x<N && y>=0 && y<N; }
+function updateStatus(){ statusEl.textContent = `Lượt: ${turn} | WinNeed: ${winNeedFor(N)} | Chế độ: ${mode}`; }
 
 function createBoard(){
-  N = parseInt(document.getElementById("size").value);
-  mode = document.getElementById("mode").value;
-
-  if(!N || N < 4 || N > 20){
-    alert("N phải từ 4 đến 20");
-    return;
-  }
-
-  const boardDiv = document.getElementById("board");
-  boardDiv.innerHTML = "";
-  boardDiv.style.gridTemplateColumns = `repeat(${N}, var(--cell-size))`;
-
-  board = Array.from({length:N}, ()=>Array(N).fill(""));
-  turn = "X";
+  const v = parseInt(sizeInput.value);
+  mode = modeSelect.value;
+  if(!v || v < 3 || v > 20){ alert('N phải từ 3 tới 20'); return; }
+  N = v;
+  board = Array.from({length:N}, ()=>Array(N).fill(''));
+  turn = 'X';
   isGameOver = false;
+  transposition.clear();
+  evalCache.clear();
+  rebuildActiveMask();
+  renderGrid();
+  updateStatus();
+}
 
+function resetBoard(){
+  if(!N) return;
+  board = Array.from({length:N}, ()=>Array(N).fill(''));
+  turn = 'X'; isGameOver = false;
+  transposition.clear(); evalCache.clear(); rebuildActiveMask();
+  renderGrid(); updateStatus();
+}
+
+function renderGrid(){
+  boardEl.innerHTML = '';
+  const cellSize = getComputedStyle(document.documentElement).getPropertyValue('--cell-size') || '40px';
+  boardEl.style.gridTemplateColumns = `repeat(${N}, ${cellSize})`;
   for(let i=0;i<N;i++){
     for(let j=0;j<N;j++){
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.onclick = ()=> playerClick(i,j,cell);
-      boardDiv.appendChild(cell);
+      const d = document.createElement('div');
+      d.className = 'cell';
+      d.dataset.i = i; d.dataset.j = j;
+      d.onclick = ()=> onCellClick(i,j,d);
+      boardEl.appendChild(d);
     }
   }
 }
 
-function playerClick(i, j, cell) {
-  if (isGameOver) return;
-  if (board[i][j] !== "") return;
+function onCellClick(i,j,el){
+  if(isGameOver) return;
+  if(board[i][j] !== '') return;
+  place(i,j,turn);
+  renderCell(i,j);
+  rebuildActiveMask(); 
+  const winCells = checkWin(turn);
+  if(winCells){ finish(winCells, turn); return; }
+  if(boardFull()){ isGameOver = true; setTimeout(()=>alert('Hòa!'),50); updateStatus(); return; }
+  if(mode === 'pvp'){ turn = (turn === 'X') ? 'O' : 'X'; updateStatus(); return; }
 
-  move(i, j, turn, cell);
+  turn = 'O'; updateStatus();
+ 
+  setTimeout(()=> botMove(), 20);
+}
 
-  let win = checkWin(turn);
-  if (win) { finish(win); return; }
+function renderCell(i,j){
+  const idx = i * N + j;
+  const el = boardEl.children[idx];
+  el.textContent = board[i][j];
+  el.classList.remove('x','o','win');
+  if(board[i][j] === 'X') el.classList.add('x');
+  if(board[i][j] === 'O') el.classList.add('o');
+}
 
-  if (mode === "pvp") {
-    turn = (turn === "X" ? "O" : "X");
-    return;
+function place(i,j,p){ board[i][j] = p; }
+
+function boardFull(){ for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(board[i][j] === '') return false; return true; }
+
+function rebuildActiveMask(){
+  activeMask = Array.from({length:N}, ()=>Array(N).fill(false));
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] !== ''){
+        for(let di=-2;di<=2;di++){
+          for(let dj=-2;dj<=2;dj++){
+            const x = i+di, y = j+dj;
+            if(inBounds(x,y)) activeMask[x][y] = true;
+          }
+        }
+      }
+    }
   }
-
-  turn = "O";
-  setTimeout(botMove, 200);
 }
 
-function move(i,j,player,cell){
-  board[i][j] = player;
-  cell.textContent = player;
-  cell.classList.add(player=="X"?"x":"o");
+function botMove(){
+  if(isGameOver) return;
+  let pos = null;
+
+  if(mode === 'easy') pos = pickMoveEasy();
+  else if(mode === 'hard') pos = pickMoveHard();
+  else pos = pickMoveSuperHard();
+
+  if(!pos) pos = randomMove();
+  place(pos.i,pos.j,'O');
+  renderCell(pos.i,pos.j);
+  rebuildActiveMask();
+  const winCells = checkWin('O');
+  if(winCells){ finish(winCells, 'O'); return; }
+  if(boardFull()){ isGameOver = true; setTimeout(()=>alert('Hòa!'),50); updateStatus(); return; }
+  turn = 'X'; updateStatus();
 }
-
-function botMove() {
-  if (isGameOver) return;
-
-  let pos = (mode === "easy") ? randomMove() : smartMove();
-  if (!pos) return;
-
-  const cell = document.getElementById("board").children[pos.i * N + pos.j];
-
-  move(pos.i, pos.j, "O", cell);
-
-  let win = checkWin("O");
-  if (win) { finish(win); return; }
-
-  turn = "X";   
-}
-
 
 function randomMove(){
-  let free = [];
-  for(let i=0;i<N;i++)
-    for(let j=0;j<N;j++)
-      if(board[i][j] === "") free.push({i,j});
+  const free = [];
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(board[i][j] === '') free.push({i,j});
+  if(free.length === 0) return null;
   return free[Math.floor(Math.random()*free.length)];
 }
 
-function smartMove(){
-  // 1. bot tự thắng
-  let win = findWin("O");
-  if(win) return win;
+function generateCandidates(limit){
+  const cand = [];
+  const centerOnly = board.every(row => row.every(v => v === ''));
+  if(centerOnly){
+    const ci = Math.floor(N/2), cj = Math.floor(N/2);
+    return [{i:ci,j:cj}];
+  }
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] !== '') continue;
+      if(activeMask && activeMask[i][j]) cand.push({i,j});
+    }
+  }
 
-  // 2. chặn X thắng
-  let block = findWin("X");
-  if(block) return block;
+  if(cand.length === 0){
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(board[i][j]==='') cand.push({i,j});
+  }
 
-  // 3. không có thì random
-  return randomMove();
+  cand.sort((a,b)=> quickCellHeuristic(b.i,b.j) - quickCellHeuristic(a.i,a.j));
+  return cand.slice(0, Math.max(1, Math.min(limit, cand.length)));
 }
 
-function findWin(player) {
-  const need = (N < 5 ? 3 : 5);
+function quickCellHeuristic(i,j){
+  let score = 0;
+  const center = Math.abs(i - (N-1)/2) + Math.abs(j - (N-1)/2);
+  score += (N*2 - center) * 10;
+  const dirs = [[0,1],[1,0],[1,1],[1,-1],[0,-1],[-1,0],[-1,-1],[-1,1]];
+  for(const [dx,dy] of dirs){
+    const x=i+dx,y=j+dy;
+    if(inBounds(x,y)){
+      if(board[x][y] === 'O') score += 30;
+      if(board[x][y] === 'X') score += 25;
+    }
+  }
+  return score;
+}
 
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < N; j++) {
-      if (board[i][j] === "") {
-        board[i][j] = player;
-        if (checkWin(player)) {
-          board[i][j] = "";
-          return { i, j };
+function pickMoveEasy(){
+  const need = winNeedFor(N);
+  const winNow = findWinningMove('O', need); if(winNow) return winNow;
+  const blockNow = findWinningMove('X', need); if(blockNow) return blockNow;
+
+  const candidates = generateCandidates(Math.max(30, Math.floor(N*N*0.2)));
+
+  let best = null, bestS = -1e18;
+  const evals = evaluateBoardFast('O','X');
+  for(const c of candidates){
+    const s = evals[c.i][c.j];
+    if(s > bestS){ bestS = s; best = c; }
+  }
+  return best || randomMove();
+}
+
+function evaluateBoardFast(bot, enemy){
+  const key = boardToKey('fast');
+  if(evalCache.has(key)) return evalCache.get(key);
+
+  const need = winNeedFor(N);
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  const scores = Array.from({length:N}, ()=>Array(N).fill(0));
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] !== '') continue;
+      let s = 0;
+      for(const [dx,dy] of dirs){
+        let botCnt=0, enCnt=0;
+        for(let k=-need+1;k<need;k++){
+          const x=i+dx*k, y=j+dy*k;
+          if(!inBounds(x,y)) continue;
+          if(board[x][y] === bot) botCnt++;
+          else if(board[x][y] === enemy) enCnt++;
         }
-        board[i][j] = "";
+        if(botCnt === need-1 && enCnt === 0) s += 100000;
+        if(enCnt === need-1 && botCnt === 0) s += 90000;
+        s += botCnt*30 - enCnt*28;
       }
+      const center = Math.abs(i - (N-1)/2) + Math.abs(j - (N-1)/2);
+      s += Math.max(0, N - center)*4;
+      scores[i][j] = s;
+    }
+  }
+  evalCache.set(key, scores);
+  return scores;
+}
+
+function pickMoveHard(){
+  const need = winNeedFor(N);
+  const winNow = findWinningMove('O', need); if(winNow) return winNow;
+  const blockNow = findWinningMove('X', need); if(blockNow) return blockNow;
+
+  const oppFork = findForkMove('X'); if(oppFork) return oppFork;
+
+  const candidates = generateCandidates(Math.max(50, Math.floor(N*N*0.25)));
+
+  let best=null, bestScore = -1e18;
+  const evals = evaluateBoardFast('O','X');
+  for(const c of candidates){
+    if(board[c.i][c.j] !== '') continue;
+ 
+    let score = evals[c.i][c.j];
+  
+    board[c.i][c.j] = 'O';
+  
+    const oppWin = findWinningMove('X', need);
+    if(oppWin) score -= 2000000;
+    else {
+
+      const oppCandidates = generateCandidates(12);
+      let oppBest = -1e18;
+      const oppEvals = evaluateBoardFast('X','O');
+      for(const oc of oppCandidates){
+        if(board[oc.i][oc.j] !== '') continue;
+        oppBest = Math.max(oppBest, oppEvals[oc.i][oc.j]);
+      }
+      score -= oppBest * 0.35;
+    }
+    board[c.i][c.j] = '';
+    if(score > bestScore){ bestScore = score; best = c; }
+  }
+  return best || randomMove();
+}
+
+function pickMoveSuperHard(){
+  const need = winNeedFor(N);
+ 
+  const winNow = findWinningMove('O', need); if(winNow) return winNow;
+  const blockNow = findWinningMove('X', need); if(blockNow) return blockNow;
+  const oppFork = findForkMove('X'); if(oppFork) return oppFork;
+
+  const candidateLimit = (N <= 6) ? Math.min(60, N*N) : Math.min(120, Math.floor(N*N*0.25));
+  const candidates = generateCandidates(candidateLimit);
+
+  let baseDepth;
+  if(N <= 4) baseDepth = 8;
+  else if(N <= 5) baseDepth = 6;
+  else if(N <= 6) baseDepth = 5;
+  else if(N <= 8) baseDepth = 4;
+  else if(N <= 12) baseDepth = 3;
+  else baseDepth = 2;
+
+  transposition.clear();
+  let bestMove = null, bestScore = -1e18;
+  const ordering = candidates.slice(); 
+  for(let depth=1; depth<=baseDepth; depth++){
+    let localBest=null, localBestScore=-1e18;
+  
+    ordering.sort((a,b)=> quickCellHeuristic(b.i,b.j) - quickCellHeuristic(a.i,a.j));
+    for(const mv of ordering){
+      if(board[mv.i][mv.j] !== '') continue;
+      board[mv.i][mv.j] = 'O';
+      const sc = minimaxRoot(depth-1, false, -1e18, 1e18);
+      board[mv.i][mv.j] = '';
+      if(sc > localBestScore){ localBestScore = sc; localBest = mv; }
+    }
+    if(localBest){
+      bestMove = localBest; bestScore = localBestScore;
+    }
+  
+    if(bestScore > 1e11) break;
+  }
+
+  if(bestMove) return bestMove;
+
+  const evals = evaluateBoardSuper('O','X');
+  let best=null, bestS=-1e18;
+  for(const c of candidates){
+    if(evals[c.i][c.j] > bestS){ bestS = evals[c.i][c.j]; best = c; }
+  }
+  return best || randomMove();
+}
+
+function minimaxRoot(depth, isMax, alpha, beta){
+  return minimax(depth, isMax, alpha, beta);
+}
+
+function boardToKey(prefix=''){
+
+  return prefix + '|' + board.map(r=>r.join('')).join('|');
+}
+
+function minimax(depth, isMax, alpha, beta){
+  const key = boardToKey(depth + ':' + (isMax? 'M' : 'm'));
+  if(transposition.has(key)) return transposition.get(key);
+
+  const winO = checkWin('O');
+  if(winO){ transposition.set(key, 1e12); return 1e12; }
+  const winX = checkWin('X');
+  if(winX){ transposition.set(key, -1e12); return -1e12; }
+  if(depth === 0 || boardFull()){
+    const val = evaluateStaticForMinimax();
+    transposition.set(key, val);
+    return val;
+  }
+
+  if(isMax){
+    let v = -1e18;
+    const moves = generateMovesOrderedSuper('O','X', Math.max(10, Math.floor((N*N)*0.25)));
+    for(const mv of moves){
+      if(board[mv.i][mv.j] !== '') continue;
+      board[mv.i][mv.j] = 'O';
+      const val = minimax(depth-1, false, alpha, beta);
+      board[mv.i][mv.j] = '';
+      if(val > v) v = val;
+      if(v > alpha) alpha = v;
+      if(alpha >= beta) break;
+    }
+    transposition.set(key, v);
+    return v;
+  } else {
+    let v = 1e18;
+    const moves = generateMovesOrderedSuper('X','O', Math.max(10, Math.floor((N*N)*0.25)));
+    for(const mv of moves){
+      if(board[mv.i][mv.j] !== '') continue;
+      board[mv.i][mv.j] = 'X';
+      const val = minimax(depth-1, true, alpha, beta);
+      board[mv.i][mv.j] = '';
+      if(val < v) v = val;
+      if(v < beta) beta = v;
+      if(beta <= alpha) break;
+    }
+    transposition.set(key, v);
+    return v;
+  }
+}
+
+function generateMovesOrderedSuper(bot, enemy, limit){
+  const scores = evaluateBoardSuper(bot, enemy);
+  const arr = [];
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    if(board[i][j] === '') arr.push({i,j,score:scores[i][j]});
+  }
+  arr.sort((a,b)=> b.score - a.score);
+  return arr.slice(0, Math.max(1, Math.min(limit, arr.length)));
+}
+
+function evaluateStaticForMinimax(){
+  const need = winNeedFor(N);
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  let total = 0;
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] === '') continue;
+      for(const [dx,dy] of dirs){
+        let oCount=0,xCount=0;
+        for(let k=0;k<need;k++){
+          const x=i+dx*k, y=j+dy*k;
+          if(!inBounds(x,y)) break;
+          if(board[x][y] === 'O') oCount++;
+          else if(board[x][y] === 'X') xCount++;
+        }
+        if(oCount>0 && xCount===0) total += Math.pow(10, Math.min(6, oCount));
+        if(xCount>0 && oCount===0) total -= Math.pow(10, Math.min(6, xCount));
+      }
+    }
+  }
+  return total;
+}
+
+function evaluateBoardSuper(bot, enemy){
+ 
+  const key = boardToKey('super');
+  if(evalCache.has(key)) return evalCache.get(key);
+
+  const need = winNeedFor(N);
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  const scores = Array.from({length:N}, ()=>Array(N).fill(0));
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] !== '') continue;
+      let sc = 0;
+      for(const [dx,dy] of dirs){
+        let botCnt=0, enCnt=0, blanks=0;
+        for(let k=-need;k<=need;k++){
+          const x=i+dx*k, y=j+dy*k;
+          if(!inBounds(x,y)) continue;
+          const v = board[x][y];
+          if(v===bot) botCnt++;
+          else if(v===enemy) enCnt++;
+          else blanks++;
+        }
+        if(botCnt >= need-1 && enCnt===0) sc += 1e8;
+        if(enCnt >= need-1 && botCnt===0) sc += 8e7;
+        if(botCnt === need-2 && blanks>=2) sc += 200000;
+        if(enCnt === need-2 && blanks>=2) sc += 120000;
+        sc += botCnt*600 - enCnt*520;
+      }
+      const center = Math.abs(i - (N-1)/2) + Math.abs(j - (N-1)/2);
+      sc += Math.max(0, (N*2 - center)) * 80;
+      scores[i][j] = sc;
+    }
+  }
+  evalCache.set(key, scores);
+  return scores;
+}
+
+function findWinningMove(player, need = winNeedFor(N)){
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] !== '') continue;
+      board[i][j] = player;
+      const win = checkWin(player);
+      board[i][j] = '';
+      if(win) return {i,j};
     }
   }
   return null;
 }
 
+function countImmediateWinsAfterMove(player){
+  let cnt=0;
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] !== '') continue;
+      board[i][j] = player;
+      if(checkWin(player)) cnt++;
+      board[i][j] = '';
+      if(cnt >= 2) return cnt;
+    }
+  }
+  return cnt;
+}
 
-function finish(winCells){
+function findForkMove(player){
+  for(let i=0;i<N;i++){
+    for(let j=0;j<N;j++){
+      if(board[i][j] !== '') continue;
+      board[i][j] = player;
+      const wc = countImmediateWinsAfterMove(player);
+      board[i][j] = '';
+      if(wc >= 2) return {i,j};
+    }
+  }
+  return null;
+}
+
+function checkWin(p){
+  const need = winNeedFor(N);
+ 
+  for(let i=0;i<N;i++){
+    for(let j=0;j<=N-need;j++){
+      let ok=true;
+      for(let k=0;k<need;k++) if(board[i][j+k] !== p){ ok=false; break; }
+      if(ok) return Array.from({length:need},(_,t)=>[i, j+t]);
+    }
+  }
+ 
+  for(let i=0;i<=N-need;i++){
+    for(let j=0;j<N;j++){
+      let ok=true;
+      for(let k=0;k<need;k++) if(board[i+k][j] !== p){ ok=false; break; }
+      if(ok) return Array.from({length:need},(_,t)=>[i+t, j]);
+    }
+  }
+ 
+  for(let i=0;i<=N-need;i++){
+    for(let j=0;j<=N-need;j++){
+      let ok=true;
+      for(let k=0;k<need;k++) if(board[i+k][j+k] !== p){ ok=false; break; }
+      if(ok) return Array.from({length:need},(_,t)=>[i+t, j+t]);
+    }
+  }
+
+  for(let i=0;i<=N-need;i++){
+    for(let j=need-1;j<N;j++){
+      let ok=true;
+      for(let k=0;k<need;k++) if(board[i+k][j-k] !== p){ ok=false; break; }
+      if(ok) return Array.from({length:need},(_,t)=>[i+t, j-t]);
+    }
+  }
+  return null;
+}
+
+function finish(cells, winner){
   isGameOver = true;
-  highlight(winCells);
-  setTimeout(()=>alert(turn + " thắng!"),100);
+  if(cells && cells.length){
+    for(const [i,j] of cells){
+      const el = boardEl.children[i*N + j];
+      if(el) el.classList.add('win');
+    }
+  }
+  updateStatus();
+  setTimeout(()=>{ alert((winner === 'X' ? 'Bạn (X)' : (winner === 'O' ? 'AI (O)' : winner)) + ' thắng!'); }, 120);
 }
 
-function highlight(list){
-  const cells = document.getElementById("board").children;
-  for(const [i,j] of list){
-    cells[i*N + j].classList.add("win");
-  }
+function boardToSimpleString(){
+  return board.map(r=>r.join('')).join('');
 }
 
-/* kiểm tra thắng 3 liên tiếp */
-function checkWin(p) {
-  const need = (N < 5 ? 3 : 5);
-
-  // ----- NGANG -----
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j <= N - need; j++) {
-      let ok = true;
-      for (let k = 0; k < need; k++) {
-        if (board[i][j + k] !== p) { ok = false; break; }
-      }
-      if (ok) {
-        return Array.from({length: need}, (_, k) => [i, j + k]);
-      }
-    }
-  }
-
-  // ----- DỌC -----
-  for (let i = 0; i <= N - need; i++) {
-    for (let j = 0; j < N; j++) {
-      let ok = true;
-      for (let k = 0; k < need; k++) {
-        if (board[i + k][j] !== p) { ok = false; break; }
-      }
-      if (ok) {
-        return Array.from({length: need}, (_, k) => [i + k, j]);
-      }
-    }
-  }
-
-  // ----- CHÉO CHÍNH -----
-  for (let i = 0; i <= N - need; i++) {
-    for (let j = 0; j <= N - need; j++) {
-      let ok = true;
-      for (let k = 0; k < need; k++) {
-        if (board[i + k][j + k] !== p) { ok = false; break; }
-      }
-      if (ok) {
-        return Array.from({length: need}, (_, k) => [i + k, j + k]);
-      }
-    }
-  }
-
-  // ----- CHÉO PHỤ -----
-  for (let i = 0; i <= N - need; i++) {
-    for (let j = need - 1; j < N; j++) {
-      let ok = true;
-      for (let k = 0; k < need; k++) {
-        if (board[i + k][j - k] !== p) { ok = false; break; }
-      }
-      if (ok) {
-        return Array.from({length: need}, (_, k) => [i + k, j - k]);
-      }
-    }
-  }
-
-  return null;
-}
-
+(function init(){
+  sizeInput.value = 7;
+  modeSelect.value = 'superhard';
+  createBoard();
+})();
 </script>
-
 </body>
-</html> 
+</html>
